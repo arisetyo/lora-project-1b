@@ -1,0 +1,7 @@
+torch>=2.2.0
+transformers>=4.40.0
+datasets>=2.19.0
+peft>=0.10.0
+wandb>=0.17.0
+scikit-learn>=1.4.0
+jupyter>=1.0.0
