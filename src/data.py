@@ -1,3 +1,7 @@
+import json
+import random
+from pathlib import Path
+
 from datasets import load_dataset
 from torch.utils.data import DataLoader, Dataset
 from transformers import GPT2Tokenizer
@@ -11,6 +15,7 @@ TB_KEYWORDS = [
 
 DATASET_NAME = "bigbio/pubmed_qa"
 DATASET_CONFIG = "pubmed_qa_labeled_fold0_bigbio_qa"
+DATA_PATH = "data/tb_qa.json"
 
 
 class TokenizedDataset(Dataset):
@@ -29,25 +34,31 @@ class TokenizedDataset(Dataset):
 
 
 def get_dataloaders(
+    data_path: str = DATA_PATH,
     dataset_name: str = DATASET_NAME,
     dataset_config: str = DATASET_CONFIG,
     batch_size: int = 4,
     max_length: int = 512,
     val_split: float = 0.2,
     test_n: int = 100,
+    seed: int = 42,
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     """
-    Loads PubMed QA, filters for TB-relevant records, formats as Q&A pairs,
-    and returns train / val / test DataLoaders.
+    Loads formatted Q&A data from data_path when available.
+    Falls back to pulling and filtering Hugging Face PubMed QA if the file
+    does not exist. Returns train / val / test DataLoaders.
     """
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     tokenizer.pad_token = tokenizer.eos_token
 
-    print(f"Loading {dataset_name}...")
-    dataset = load_dataset(dataset_name, dataset_config, trust_remote_code=True)
-
-    texts = _extract_and_filter(dataset)
-    print(f"TB-relevant records found: {len(texts)}")
+    texts = _load_local_formatted_texts(data_path)
+    if texts:
+        print(f"Loaded {len(texts)} records from {data_path}")
+    else:
+        print(f"{data_path} not found or empty; loading {dataset_name} ({dataset_config})...")
+        dataset = load_dataset(dataset_name, dataset_config, trust_remote_code=True)
+        texts = _extract_and_filter(dataset)
+        print(f"TB-relevant records found from Hugging Face: {len(texts)}")
 
     if len(texts) < 200:
         raise ValueError(
@@ -55,8 +66,13 @@ def get_dataloaders(
             "Try adding more keywords or using lavita/medical-qa-datasets as fallback."
         )
 
-    test_texts = texts[:test_n]
-    remaining = texts[test_n:]
+    rng = random.Random(seed)
+    shuffled_texts = texts[:]
+    rng.shuffle(shuffled_texts)
+
+    test_n = min(test_n, max(1, len(shuffled_texts) // 5))
+    test_texts = shuffled_texts[:test_n]
+    remaining = shuffled_texts[test_n:]
     split_idx = int(len(remaining) * (1 - val_split))
     train_texts = remaining[:split_idx]
     val_texts = remaining[split_idx:]
@@ -96,6 +112,29 @@ def _extract_and_filter(dataset) -> list[str]:
                 formatted = _format_qa(record)
                 if len(formatted.split()) > 20:  # skip very short entries
                     texts.append(formatted)
+    return texts
+
+
+def _load_local_formatted_texts(data_path: str) -> list[str]:
+    path = Path(data_path)
+    if not path.exists():
+        return []
+
+    with path.open("r", encoding="utf-8") as f:
+        records = json.load(f)
+
+    texts = []
+    for row in records:
+        formatted = (row.get("formatted") or "").strip()
+        if not formatted:
+            q = (row.get("question") or "").strip()
+            a = (row.get("long_answer") or row.get("answer") or "").strip()
+            if q and a:
+                formatted = f"Question: {q}\nAnswer: {a}"
+
+        if formatted and len(formatted.split()) > 20:
+            texts.append(formatted)
+
     return texts
 
 

@@ -16,41 +16,17 @@ source .venv/bin/activate
 uv pip install -r requirements.txt
 ```
 
-## Build the dataset
-See [docs/dataset-gathering.md](docs/dataset-gathering.md) for the full walkthrough.
-
-```bash
-uv run python scripts/build_tb_qa_dataset.py
-```
-
-This produces `data/tb_qa.json` (500–2,000 TB-relevant Q&A records).
-
-## How to Run
-Always activate the environment first:
-
-```bash
-source .venv/bin/activate
-```
-
-Single training run:
-```bash
-uv run python run_training.py
-```
-
-Rank ablation (`r = 1, 4, 8, 16, 32`):
-```bash
-uv run python -c "from src.ablation import run_ablation; run_ablation()"
-```
-
 ## Outputs
 - Checkpoints: `outputs/checkpoints/` (not tracked in git)
 - Ablation CSV: `outputs/results.csv`
 - Base vs fine-tuned comparison: `docs/base-vs-finetuned.md`
-- W&B project: `lora-phase1b-galenic`
+- W&B project: `lora-tb-phase1b`
 
 ## Documentation
-- [PRD](docs/PRD.md) — full requirements and module spec
-- [Dataset gathering walkthrough](docs/dataset-gathering.md) — operational guide for assembling `data/tb_qa.json`
+- [SOP: step-by-step runbook](docs/runbook.md)
+- [Dataset gathering walkthrough](docs/reference/dataset_gathering.md)
+- [Archived PRD](docs/archive/PRD.md)
+- [Reference materials](docs/reference/)
 
 ## Reference
 - Phase 1A code: `../lora-project-1a/`

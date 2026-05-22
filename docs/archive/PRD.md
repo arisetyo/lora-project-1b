@@ -116,7 +116,7 @@ Loads `bigbio/pubmed_qa` via the HuggingFace `datasets` library, filters for TB-
 
 **Expected yield:** 500–2,000 TB-relevant records. If yield is below 300, fall back to `lavita/medical-qa-datasets` and re-filter (document this in the run log).
 
-See `docs/dataset-gathering.md` for the operational walkthrough.
+See `docs/reference/dataset_gathering.md` for the operational walkthrough.
 
 ### 5.3 `train.py` — reused
 
@@ -181,7 +181,7 @@ W&B run config updates:
 
 ## 6. Dataset
 
-See `docs/dataset-gathering.md` for the full operational walkthrough. Summary:
+See `docs/reference/dataset_gathering.md` for the full operational walkthrough. Summary:
 
 **Primary:** `bigbio/pubmed_qa` (HuggingFace) — PubMed abstracts as Q&A pairs. Filter by TB keywords. Expected yield 500–2,000 records.
 **Fallback:** `lavita/medical-qa-datasets` — broader medical Q&A, larger volume, less PubMed-specific.
@@ -287,7 +287,7 @@ You are implementing this in a fresh repo at `lora-project-1b/`. Before writing 
    - `run_training.py` — switch to `GPT2LMHeadModel`, swap eval calls
 
 3. **Write fresh:**
-   - `src/data.py` — see Section 5.2 and `docs/dataset-gathering.md`
+   - `src/data.py` — see Section 5.2 and `docs/reference/dataset_gathering.md`
    - `prompts.py` — see Section 5.6
    - `requirements.txt` — copy 1A and add `datasets>=2.18.0`
    - `README.md` — adapt the 1A README with TB-specific instructions
