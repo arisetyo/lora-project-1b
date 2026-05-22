@@ -59,11 +59,12 @@ def get_dataloaders(
         dataset = load_dataset(dataset_name, dataset_config, trust_remote_code=True)
         texts = _extract_and_filter(dataset)
         print(f"TB-relevant records found from Hugging Face: {len(texts)}")
+        _save_cache(texts, data_path)
 
-    if len(texts) < 200:
+    if len(texts) < 300:
         raise ValueError(
             f"Only {len(texts)} TB records found — too few to train meaningfully. "
-            "Try adding more keywords or using lavita/medical-qa-datasets as fallback."
+            "Run scripts/build_tb_qa_dataset.py which includes the lavita fallback."
         )
 
     rng = random.Random(seed)
@@ -148,3 +149,13 @@ def _make_loader(texts: list[str], tokenizer, max_length: int, batch_size: int, 
     )
     ds = TokenizedDataset(encodings)
     return DataLoader(ds, batch_size=batch_size, shuffle=shuffle)
+
+
+def _save_cache(texts: list[str], data_path: str) -> None:
+    """Caches filtered HF dataset to data_path so subsequent runs skip the HF download."""
+    path = Path(data_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    records = [{"formatted": t} for t in texts]
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(records, f, ensure_ascii=False, indent=2)
+    print(f"Cached {len(records)} records to {data_path}")

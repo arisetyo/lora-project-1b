@@ -6,7 +6,7 @@ import wandb
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 from src.data import get_dataloaders
-from src.evaluate import compute_perplexity
+from src.evaluate import compute_perplexity, compute_ood_perplexity
 from src.lora import apply_lora_to_gpt2, print_trainable_params
 from src.train import train
 
@@ -42,6 +42,8 @@ def run_ablation(
         print(f"{'='*50}")
 
         base_model = GPT2LMHeadModel.from_pretrained("gpt2")
+        for p in base_model.parameters():
+            p.requires_grad = False
         model = apply_lora_to_gpt2(base_model, r=r, alpha=r)
         print_trainable_params(model)
 
@@ -66,12 +68,13 @@ def run_ablation(
         )
 
         val_ppl = compute_perplexity(model, tokenizer, val_texts, device)
-        print(f"r={r} | trainable={trainable_params:,} | val_ppl={val_ppl:.2f}")
+        ood_ppl = compute_ood_perplexity(model, tokenizer, device)
+        print(f"r={r} | trainable={trainable_params:,} | val_ppl={val_ppl:.2f} | ood_ppl={ood_ppl:.2f}")
 
-        run.log({"val/perplexity": val_ppl})
+        run.log({"val/perplexity": val_ppl, "ood/perplexity": ood_ppl})
         run.finish()
 
-        rows.append({"rank": r, "trainable_params": trainable_params, "val_ppl": round(val_ppl, 4)})
+        rows.append({"rank": r, "trainable_params": trainable_params, "val_ppl": round(val_ppl, 4), "ood_ppl": round(ood_ppl, 4)})
 
     _write_csv(rows)
     print(f"\nAblation complete. Results written to {RESULTS_PATH}")
@@ -93,14 +96,14 @@ def _loader_to_texts(loader, tokenizer, max_examples: int) -> list[str]:
 def _write_csv(rows: list[dict]) -> None:
     os.makedirs("outputs", exist_ok=True)
     with open(RESULTS_PATH, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["rank", "trainable_params", "val_ppl"])
+        writer = csv.DictWriter(f, fieldnames=["rank", "trainable_params", "val_ppl", "ood_ppl"])
         writer.writeheader()
         writer.writerows(rows)
 
 
 def _print_summary(rows: list[dict]) -> None:
     print("\nSummary:")
-    print(f"{'Rank':>6} | {'Trainable Params':>18} | {'Val PPL':>10}")
-    print("-" * 42)
+    print(f"{'Rank':>6} | {'Trainable Params':>18} | {'Val PPL':>10} | {'OOD PPL':>10}")
+    print("-" * 55)
     for row in rows:
-        print(f"{row['rank']:>6} | {row['trainable_params']:>18,} | {row['val_ppl']:>10.4f}")
+        print(f"{row['rank']:>6} | {row['trainable_params']:>18,} | {row['val_ppl']:>10.4f} | {row['ood_ppl']:>10.4f}")

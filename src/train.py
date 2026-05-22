@@ -31,17 +31,15 @@ def train(
     )
 
     for epoch in range(1, epochs + 1):
-        train_loss, train_acc = _run_epoch(model, train_loader, optimizer, scheduler, device, training=True)
-        val_loss, val_acc = _run_epoch(model, val_loader, None, None, device, training=False)
+        train_loss = _run_epoch(model, train_loader, optimizer, scheduler, device, training=True)
+        val_loss = _run_epoch(model, val_loader, None, None, device, training=False)
 
-        print(f"Epoch {epoch}/{epochs} — train loss: {train_loss:.4f} | val loss: {val_loss:.4f} | val acc: {val_acc:.4f}")
+        print(f"Epoch {epoch}/{epochs} — train loss: {train_loss:.4f} | val loss: {val_loss:.4f}")
 
         if wandb_run:
             wandb_run.log({
                 "train/loss": train_loss,
-                "train/accuracy": train_acc,
                 "val/loss": val_loss,
-                "val/accuracy": val_acc,
                 "epoch": epoch,
             })
 
@@ -49,12 +47,10 @@ def train(
             _save_adapter(model, f"{checkpoint_path}_epoch{epoch}.pt")
 
 
-def _run_epoch(model, loader, optimizer, scheduler, device, training: bool) -> tuple[float, float]:
-    """Run one full pass over loader, returning (avg_loss, accuracy)."""
+def _run_epoch(model, loader, optimizer, scheduler, device, training: bool) -> float:
+    """Run one full pass over loader, returning avg_loss."""
     model.train() if training else model.eval()
     total_loss = 0.0
-    correct = 0
-    total = 0
 
     ctx = torch.enable_grad() if training else torch.no_grad()
     with ctx:
@@ -67,10 +63,6 @@ def _run_epoch(model, loader, optimizer, scheduler, device, training: bool) -> t
             loss = outputs.loss
             total_loss += loss.item()
 
-            preds = outputs.logits.argmax(dim=-1)
-            correct += (preds == labels).sum().item()
-            total += labels.size(0)
-
             if training:
                 optimizer.zero_grad()
                 loss.backward()
@@ -78,8 +70,7 @@ def _run_epoch(model, loader, optimizer, scheduler, device, training: bool) -> t
                 optimizer.step()
                 scheduler.step()
 
-    accuracy = correct / total if total > 0 else 0.0
-    return total_loss / len(loader), accuracy
+    return total_loss / len(loader)
 
 
 def _save_adapter(model, path: str) -> None:

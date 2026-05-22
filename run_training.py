@@ -18,7 +18,7 @@ import wandb
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 from src.data import get_dataloaders
-from src.evaluate import compute_perplexity, run_prompt_battery
+from src.evaluate import compute_perplexity, compute_ood_perplexity, run_prompt_battery
 from src.lora import apply_lora_to_gpt2, print_trainable_params
 from src.train import train
 from prompts import PROMPTS
@@ -43,6 +43,8 @@ def main():
 
     print("\nLoading GPT-2 and applying LoRA...")
     base_model = GPT2LMHeadModel.from_pretrained("gpt2")
+    for p in base_model.parameters():
+        p.requires_grad = False
     model = apply_lora_to_gpt2(base_model, r=RANK, alpha=ALPHA)
     print_trainable_params(model)
 
@@ -52,7 +54,8 @@ def main():
     print("\nComputing baseline perplexity...")
     baseline_texts = _loader_to_texts(val_loader, tokenizer, max_examples=100)
     baseline_ppl = compute_perplexity(model, tokenizer, baseline_texts, device)
-    print(f"Baseline val PPL: {baseline_ppl:.2f}")
+    baseline_ood_ppl = compute_ood_perplexity(model, tokenizer, device)
+    print(f"Baseline val PPL: {baseline_ppl:.2f} | OOD PPL: {baseline_ood_ppl:.2f}")
 
     print("\nRunning baseline prompt battery...")
     baseline_responses = run_prompt_battery(model, tokenizer, PROMPTS, device)
@@ -70,7 +73,7 @@ def main():
             "dataset": "bigbio/pubmed_qa",
         },
     )
-    run.log({"baseline/val_ppl": baseline_ppl})
+    run.log({"baseline/val_ppl": baseline_ppl, "baseline/ood_ppl": baseline_ood_ppl})
 
     print(f"\nStarting training (r={RANK}, epochs={EPOCHS}, lr={LR})...")
     train(
@@ -86,10 +89,12 @@ def main():
 
     print("\nComputing post-training perplexity...")
     final_ppl = compute_perplexity(model, tokenizer, baseline_texts, device)
+    final_ood_ppl = compute_ood_perplexity(model, tokenizer, device)
     reduction = (1 - final_ppl / baseline_ppl) * 100
     print(f"Final val PPL: {final_ppl:.2f}  (baseline was {baseline_ppl:.2f})")
     print(f"PPL reduction: {reduction:.1f}%")
-    run.log({"final/val_ppl": final_ppl, "ppl_reduction_pct": reduction})
+    print(f"OOD PPL: {final_ood_ppl:.2f} (baseline was {baseline_ood_ppl:.2f})")
+    run.log({"final/val_ppl": final_ppl, "ppl_reduction_pct": reduction, "final/ood_ppl": final_ood_ppl})
 
     print("\nRunning post-training prompt battery...")
     final_responses = run_prompt_battery(model, tokenizer, PROMPTS, device)
@@ -124,7 +129,8 @@ def _print_battery(results: list[dict], label: str) -> None:
     print(f"{'='*60}")
     for item in results:
         print(f"\nPrompt:   {item['prompt']}")
-        print(f"Response: {item['response']}")
+        print(f"Greedy:   {item['greedy']}")
+        print(f"Sampled:  {item['sampled']}")
         print("-" * 60)
 
 

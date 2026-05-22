@@ -58,7 +58,7 @@ def run_prompt_battery(
 ) -> list[dict]:
     """
     Generate completions for each prompt and return a list of
-    {"prompt": ..., "completion": ...} dicts.
+    {"prompt": ..., "greedy": ..., "sampled": ...} dicts.
 
     Used to compare base GPT-2 vs fine-tuned output side by side.
     """
@@ -68,15 +68,48 @@ def run_prompt_battery(
     with torch.no_grad():
         for prompt in prompts:
             input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
-            output_ids = model.generate(
+
+            # Greedy decode
+            greedy_ids = model.generate(
                 input_ids,
                 max_new_tokens=max_new_tokens,
                 do_sample=False,
                 pad_token_id=tokenizer.eos_token_id,
             )
-            # Decode only the newly generated tokens
-            generated = output_ids[0][input_ids.shape[-1]:]
-            completion = tokenizer.decode(generated, skip_special_tokens=True).strip()
-            results.append({"prompt": prompt, "completion": completion})
+            greedy_text = tokenizer.decode(
+                greedy_ids[0][input_ids.shape[-1]:], skip_special_tokens=True
+            ).strip()
+
+            # Sampled decode
+            sampled_ids = model.generate(
+                input_ids,
+                max_new_tokens=max_new_tokens,
+                do_sample=True,
+                temperature=0.7,
+                top_p=0.9,
+                pad_token_id=tokenizer.eos_token_id,
+            )
+            sampled_text = tokenizer.decode(
+                sampled_ids[0][input_ids.shape[-1]:], skip_special_tokens=True
+            ).strip()
+
+            results.append({"prompt": prompt, "greedy": greedy_text, "sampled": sampled_text})
 
     return results
+
+
+def compute_ood_perplexity(
+    model,
+    tokenizer: GPT2Tokenizer,
+    device: str,
+    n_samples: int = 50,
+    max_length: int = 512,
+) -> float:
+    """
+    Compute perplexity on wikitext-2 test set as an out-of-domain control.
+    A large increase relative to baseline indicates catastrophic forgetting.
+    """
+    from datasets import load_dataset
+    wikitext = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
+    texts = [t for t in wikitext["text"] if len(t.strip()) > 50][:n_samples]
+    return compute_perplexity(model, tokenizer, texts, device, max_length)
