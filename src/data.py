@@ -13,8 +13,9 @@ TB_KEYWORDS = [
     "latent tb", "bcg", "tuberculous",
 ]
 
-DATASET_NAME = "bigbio/pubmed_qa"
-DATASET_CONFIG = "pubmed_qa_labeled_fold0_bigbio_qa"
+DATASET_NAME = "qiaojin/PubMedQA"
+DATASET_CONFIG = "pqa_labeled"
+FALLBACK_DATASET_CONFIG = "pqa_artificial"
 DATA_PATH = "data/tb_qa.json"
 
 
@@ -37,6 +38,7 @@ def get_dataloaders(
     data_path: str = DATA_PATH,
     dataset_name: str = DATASET_NAME,
     dataset_config: str = DATASET_CONFIG,
+    fallback_dataset_config: str = FALLBACK_DATASET_CONFIG,
     batch_size: int = 4,
     max_length: int = 512,
     val_split: float = 0.2,
@@ -56,15 +58,24 @@ def get_dataloaders(
         print(f"Loaded {len(texts)} records from {data_path}")
     else:
         print(f"{data_path} not found or empty; loading {dataset_name} ({dataset_config})...")
-        dataset = load_dataset(dataset_name, dataset_config, trust_remote_code=True)
+        dataset = load_dataset(dataset_name, dataset_config)
         texts = _extract_and_filter(dataset)
+
+        if len(texts) < 300:
+            print(
+                f"Only {len(texts)} records from {dataset_config}; "
+                f"loading fallback {fallback_dataset_config}..."
+            )
+            fallback_dataset = load_dataset(dataset_name, fallback_dataset_config)
+            texts.extend(_extract_and_filter(fallback_dataset))
+
         print(f"TB-relevant records found from Hugging Face: {len(texts)}")
         _save_cache(texts, data_path)
 
     if len(texts) < 300:
         raise ValueError(
             f"Only {len(texts)} TB records found — too few to train meaningfully. "
-            "Run scripts/build_tb_qa_dataset.py which includes the lavita fallback."
+            "Run scripts/build_tb_qa_dataset.py which includes the fallback dataset merge."
         )
 
     rng = random.Random(seed)
@@ -90,9 +101,13 @@ def get_dataloaders(
 def _is_tb_relevant(record: dict) -> bool:
     """Returns True if any TB keyword appears in the question or answer."""
     question = record.get("question", "").lower()
-    # bigbio format: answers is a list of dicts with "text" key
+
+    # Supports both old BigBio-style answers and PubMedQA long_answer.
+    long_answer = (record.get("long_answer") or "").strip()
     answers = record.get("answers", [])
-    answer_text = " ".join(a.get("text", "") for a in answers).lower()
+    answer_text = long_answer or " ".join(a.get("text", "") for a in answers)
+    answer_text = answer_text.lower()
+
     combined = f"{question} {answer_text}"
     return any(kw in combined for kw in TB_KEYWORDS)
 
@@ -100,8 +115,11 @@ def _is_tb_relevant(record: dict) -> bool:
 def _format_qa(record: dict) -> str:
     """Formats a record as a Question / Answer string for causal LM training."""
     question = record.get("question", "").strip()
+
+    long_answer = (record.get("long_answer") or "").strip()
     answers = record.get("answers", [])
-    answer_text = " ".join(a.get("text", "") for a in answers).strip()
+    answer_text = long_answer or " ".join(a.get("text", "") for a in answers).strip()
+
     return f"Question: {question}\nAnswer: {answer_text}"
 
 

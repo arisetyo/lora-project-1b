@@ -1,4 +1,11 @@
+import sys
+from pathlib import Path
+
 from transformers import GPT2LMHeadModel
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.lora import apply_lora_to_gpt2, print_trainable_params
 

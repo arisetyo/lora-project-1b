@@ -1,5 +1,5 @@
 """
-One-shot dataset builder. Pulls bigbio/pubmed_qa, filters for TB,
+One-shot dataset builder. Pulls qiaojin/PubMedQA, filters for TB,
 formats as Q&A, writes data/tb_qa.json.
 
 Run from the project root:
@@ -25,8 +25,9 @@ TB_KEYWORDS = [
 ]
 
 OUTPUT_PATH = Path("data/tb_qa.json")
-PRIMARY_CONFIG = "pubmed_qa_labeled_fold0_source"
-FALLBACK_CONFIG = "pubmed_qa_artificial_source"
+DATASET_NAME = "qiaojin/PubMedQA"
+PRIMARY_CONFIG = "pqa_labeled"
+FALLBACK_CONFIG = "pqa_artificial"
 MIN_RECORDS = 300
 
 
@@ -56,8 +57,8 @@ def extract_records(dataset_split) -> list[dict]:
 def build():
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    print(f"Loading {PRIMARY_CONFIG}...")
-    ds = load_dataset("bigbio/pubmed_qa", PRIMARY_CONFIG, trust_remote_code=True)
+    print(f"Loading {DATASET_NAME} ({PRIMARY_CONFIG})...")
+    ds = load_dataset(DATASET_NAME, PRIMARY_CONFIG)
     records = []
     for split_name in ds:
         records.extend(extract_records(ds[split_name]))
@@ -65,7 +66,7 @@ def build():
 
     if len(records) < MIN_RECORDS:
         print(f"Below threshold ({MIN_RECORDS}); pulling fallback {FALLBACK_CONFIG}...")
-        ds_fb = load_dataset("bigbio/pubmed_qa", FALLBACK_CONFIG, trust_remote_code=True)
+        ds_fb = load_dataset(DATASET_NAME, FALLBACK_CONFIG)
         for split_name in ds_fb:
             records.extend(extract_records(ds_fb[split_name]))
         print(f"  → {len(records)} TB-relevant records after fallback merge")

@@ -1,5 +1,7 @@
 import subprocess
 import sys
+import os
+from pathlib import Path
 
 CHECKS = [
     "scripts/smoke_checks/2a_validate_dataset_json.py",
@@ -12,11 +14,20 @@ CHECKS = [
 
 
 def main() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    env = os.environ.copy()
+    existing_pythonpath = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = (
+        f"{project_root}{os.pathsep}{existing_pythonpath}"
+        if existing_pythonpath
+        else str(project_root)
+    )
+
     for check in CHECKS:
         print("=" * 72)
         print(f"Running {check}")
         print("=" * 72)
-        result = subprocess.run([sys.executable, check], check=False)
+        result = subprocess.run([sys.executable, check], check=False, env=env)
         if result.returncode != 0:
             raise SystemExit(result.returncode)
 
