@@ -20,7 +20,7 @@ uv pip install -r requirements.txt
 - Checkpoints: `outputs/checkpoints/` (not tracked in git)
 - Ablation CSV: `outputs/results.csv`
 - Base vs fine-tuned comparison: `docs/base-vs-finetuned.md`
-- W&B project: `lora-tb-phase1b`
+- W&B project: `lora-phase-1b`
 
 ## Documentation
 - [SOP: step-by-step runbook](docs/runbook.md)
@@ -30,4 +30,4 @@ uv pip install -r requirements.txt
 
 ## Reference
 - Phase 1A code: `../lora-project-1a/`
-- Phase 1B learning narrative: `../../RnD/LoRA/lora-phase1b.md` (in the main repo)
+- Phase 1B learning narrative: `../../RnD/LoRA/lora-phase-1b.md` (in the main repo)

@@ -5,7 +5,7 @@
 USE_SMOKE_CONFIG = False
 
 MODEL_NAME = "gpt2"
-WANDB_PROJECT = "lora-tb-phase1b"
+WANDB_PROJECT = "lora-phase-1b"
 CHECKPOINT_DIR = "outputs/checkpoints"
 
 

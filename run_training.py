@@ -29,7 +29,7 @@ ALPHA = 8
 EPOCHS = 3
 LR = 2e-4
 BATCH_SIZE = 4          # reduced from Phase 1A — 512-token sequences are heavier
-WANDB_PROJECT = "lora-tb-phase1b"
+WANDB_PROJECT = "lora-phase-1b"
 CHECKPOINT_DIR = "outputs/checkpoints"
 # --------------
 

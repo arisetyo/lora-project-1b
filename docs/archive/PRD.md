@@ -236,7 +236,7 @@ Full ablation (5 runs) on Vast.ai: under $0.30 total.
 | At least one full training run | `outputs/checkpoints/` | ⬜ Not started |
 | Ablation results CSV | `outputs/results.csv` | ⬜ Not started |
 | Base vs fine-tuned doc | `docs/base-vs-finetuned.md` | ⬜ Not started |
-| W&B charts | W&B project `lora-phase1b-galenic` | ⬜ Not started |
+| W&B charts | W&B project `lora-phase-1b` | ⬜ Not started |
 | Phase 1A vs 1B addendum | External (Medium) | ⬜ Not started |
 
 ---
@@ -303,7 +303,7 @@ Reference: full Phase 1A code is at `large_files/lora-project-1a/`. The conceptu
 
 ---
 
-*Reference: `RnD/LoRA/lora-phase1b.md` for the learning-narrative version.*
-*Reference: `RnD/LoRA/lora-phase1.md` for Phase 1A learning notes.*
+*Reference: `RnD/LoRA/lora-phase-1b.md` for the learning-narrative version.*
+*Reference: `RnD/LoRA/lora-phase1a-galenic.md` for Phase 1A learning notes.*
 *Reference: `RnD/LoRA/lora-laymens-guide.md` for the plain-English overview.*
 *Reference: `RnD/LoRA/lora-math.md` for the mathematical foundations.*

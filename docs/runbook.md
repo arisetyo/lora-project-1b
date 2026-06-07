@@ -179,7 +179,7 @@ When rebuilding on pod makes sense:
 ```bash
 source .venv/bin/activate
 wandb login
-uv run python -c "import wandb; r=wandb.init(project='lora-tb-phase1b', name='connectivity_test'); r.log({'ping':1}); r.finish(); print('wandb OK')"
+uv run python -c "import wandb; r=wandb.init(project='lora-phase-1b', name='connectivity_test'); r.log({'ping':1}); r.finish(); print('wandb OK')"
 ```
 
 ## 7. Run full training on pod

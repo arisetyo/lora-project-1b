@@ -41,7 +41,7 @@ End-to-end flow: TB-filtered PubMed Q&A data is split/tokenized as causal-LM seq
   2. **Out-of-domain perplexity** (wikitext-2 test set, 50 samples): catastrophic forgetting check. Fine-tuning on a narrow domain can degrade general language ability; a roughly stable OOD PPL confirms the base model's general knowledge is preserved. Computed before and after training and logged to W&B alongside in-domain PPL.
   3. **Prompt battery** (greedy + sampled generation): qualitative check that fine-tuned outputs contain TB-specific terminology (drug names, regimen durations) rather than generic filler.
 - Checkpointing policy: save LoRA adapter weights only (A/B matrices), not full model weights, to keep artifacts lightweight and reusable.
-- Observability decision: standardize experiment logging in Weights & Biases (`lora-tb-phase1b` project); ablation CSV includes both `val_ppl` and `ood_ppl` columns.
+- Observability decision: standardize experiment logging in Weights & Biases (`lora-phase-1b` project); ablation CSV includes both `val_ppl` and `ood_ppl` columns.
 - Development ergonomics: central config file with full-training and smoke-test modes; smoke scripts in `scripts/smoke_checks/` verify data → LoRA → PPL → mini-train before committing to a full cloud run.
 - Tooling choice: `uv` + virtual environment workflow for consistent Python dependency and command execution.
 

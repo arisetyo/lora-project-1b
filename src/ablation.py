@@ -19,7 +19,7 @@ def run_ablation(
     lr: float = 2e-4,
     batch_size: int = 4,
     device: str = "cpu",
-    wandb_project: str = "lora-tb-phase1b",
+    wandb_project: str = "lora-phase-1b",
 ) -> None:
     """
     Trains a fresh LoRA-adapted GPT-2 for each rank value on TB Q&A data.
