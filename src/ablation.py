@@ -1,5 +1,6 @@
 import csv
 import os
+from datetime import datetime
 
 import torch
 import wandb
@@ -10,22 +11,29 @@ from src.evaluate import compute_perplexity, compute_ood_perplexity
 from src.lora import apply_lora_to_gpt2, print_trainable_params
 from src.train import train
 
-RANK_VALUES = [1, 4, 8, 16, 32]
-RESULTS_PATH = "outputs/results.csv"
+DATASET = "tb_qa.json"
 
 
 def run_ablation(
-    epochs: int = 3,
+    rank_epoch_pairs: list = None,
     lr: float = 2e-4,
     batch_size: int = 4,
     device: str = "cpu",
     wandb_project: str = "lora-phase-1b",
 ) -> None:
     """
-    Trains a fresh LoRA-adapted GPT-2 for each rank value on TB Q&A data.
-    Records trainable parameter count + final validation perplexity per rank.
+    Trains a fresh LoRA-adapted GPT-2 for each (rank, epochs) pair on TB Q&A data.
+    Records trainable parameter count + final validation perplexity per run.
+    Results and checkpoints are written to a timestamped output folder.
     """
-    os.makedirs("outputs/checkpoints", exist_ok=True)
+    if rank_epoch_pairs is None:
+        rank_epoch_pairs = [(4, 3), (8, 3), (16, 3)]
+
+    run_tag = datetime.now().strftime("%Y%m%d_%H%M")
+    output_dir = f"outputs-{run_tag}"
+    checkpoints_dir = os.path.join(output_dir, "checkpoints")
+    results_path = os.path.join(output_dir, "results.csv")
+    os.makedirs(checkpoints_dir, exist_ok=True)
 
     train_loader, val_loader, _ = get_dataloaders(batch_size=batch_size)
 
@@ -36,9 +44,9 @@ def run_ablation(
 
     rows = []
 
-    for r in RANK_VALUES:
+    for r, epochs in rank_epoch_pairs:
         print(f"\n{'='*50}")
-        print(f"Ablation run: r={r}")
+        print(f"Ablation run: r={r}, epochs={epochs}")
         print(f"{'='*50}")
 
         base_model = GPT2LMHeadModel.from_pretrained("gpt2")
@@ -51,9 +59,16 @@ def run_ablation(
 
         run = wandb.init(
             project=wandb_project,
-            name=f"ablation_r{r}",
-            config={"r": r, "alpha": r, "lr": lr, "epochs": epochs, "domain": "tb_clinical_qa"},
-            reinit=True,
+            name=f"ablation_r{r}_e{epochs}_{run_tag}",
+            config={
+                "r": r,
+                "alpha": r,
+                "lr": lr,
+                "epochs": epochs,
+                "domain": "tb_clinical_qa",
+                "dataset": DATASET,
+            },
+            reinit="finish_previous",
         )
 
         train(
@@ -64,20 +79,26 @@ def run_ablation(
             lr=lr,
             wandb_run=run,
             device=device,
-            checkpoint_path=f"outputs/checkpoints/rank_{r}",
+            checkpoint_path=os.path.join(checkpoints_dir, f"rank_{r}_epoch{epochs}"),
         )
 
         val_ppl = compute_perplexity(model, tokenizer, val_texts, device)
         ood_ppl = compute_ood_perplexity(model, tokenizer, device)
-        print(f"r={r} | trainable={trainable_params:,} | val_ppl={val_ppl:.2f} | ood_ppl={ood_ppl:.2f}")
+        print(f"r={r} | epochs={epochs} | trainable={trainable_params:,} | val_ppl={val_ppl:.2f} | ood_ppl={ood_ppl:.2f}")
 
         run.log({"val/perplexity": val_ppl, "ood/perplexity": ood_ppl})
         run.finish()
 
-        rows.append({"rank": r, "trainable_params": trainable_params, "val_ppl": round(val_ppl, 4), "ood_ppl": round(ood_ppl, 4)})
+        rows.append({
+            "rank": r,
+            "epochs": epochs,
+            "trainable_params": trainable_params,
+            "val_ppl": round(val_ppl, 4),
+            "ood_ppl": round(ood_ppl, 4),
+        })
 
-    _write_csv(rows)
-    print(f"\nAblation complete. Results written to {RESULTS_PATH}")
+    _write_csv(rows, results_path)
+    print(f"\nAblation complete. Results written to {results_path}")
     _print_summary(rows)
 
 
@@ -93,17 +114,16 @@ def _loader_to_texts(loader, tokenizer, max_examples: int) -> list[str]:
     return texts
 
 
-def _write_csv(rows: list[dict]) -> None:
-    os.makedirs("outputs", exist_ok=True)
-    with open(RESULTS_PATH, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["rank", "trainable_params", "val_ppl", "ood_ppl"])
+def _write_csv(rows: list[dict], results_path: str) -> None:
+    with open(results_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["rank", "epochs", "trainable_params", "val_ppl", "ood_ppl"])
         writer.writeheader()
         writer.writerows(rows)
 
 
 def _print_summary(rows: list[dict]) -> None:
     print("\nSummary:")
-    print(f"{'Rank':>6} | {'Trainable Params':>18} | {'Val PPL':>10} | {'OOD PPL':>10}")
-    print("-" * 55)
+    print(f"{'Rank':>6} | {'Epochs':>6} | {'Trainable Params':>18} | {'Val PPL':>10} | {'OOD PPL':>10}")
+    print("-" * 65)
     for row in rows:
-        print(f"{row['rank']:>6} | {row['trainable_params']:>18,} | {row['val_ppl']:>10.4f} | {row['ood_ppl']:>10.4f}")
+        print(f"{row['rank']:>6} | {row['epochs']:>6} | {row['trainable_params']:>18,} | {row['val_ppl']:>10.4f} | {row['ood_ppl']:>10.4f}")
