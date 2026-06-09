@@ -110,6 +110,11 @@ def compute_ood_perplexity(
     A large increase relative to baseline indicates catastrophic forgetting.
     """
     from datasets import load_dataset
-    wikitext = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
+    wikitext = load_dataset(
+        "wikitext",
+        "wikitext-2-raw-v1",
+        split="test",
+        download_mode="force_redownload",
+    )
     texts = [t for t in wikitext["text"] if len(t.strip()) > 50][:n_samples]
     return compute_perplexity(model, tokenizer, texts, device, max_length)
