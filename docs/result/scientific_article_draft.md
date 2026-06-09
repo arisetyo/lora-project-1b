@@ -1,230 +1,224 @@
-# Draft Artikel Ilmiah (Format Umum Jurnal Terindeks SINTA)
+# Evaluation of Manual LoRA Adaptation on GPT-2 for PubMed-Based Tuberculosis Clinical Q&A Generation
 
-Catatan penting:
-- SINTA adalah sistem indeks jurnal, bukan satu gaya selingkung tunggal.
-- Draft ini mengikuti format umum yang paling sering dipakai jurnal SINTA (IMRaD + abstrak bilingual + metadata etik/pendanaan/kontribusi).
-- Sebelum submit, sesuaikan lagi dengan template jurnal target (mis. ukuran font, gaya sitasi APA/IEEE/Vancouver, jumlah kata abstrak, aturan tabel/gambar).
+## Authors and Affiliation
 
-## Judul (Bahasa Indonesia)
-
-Evaluasi Adaptasi Manual LoRA pada GPT-2 untuk Generasi Tanya-Jawab Klinis Tuberkulosis Berbasis PubMed
-
-## Title (English)
-
-Evaluation of Manual LoRA Adaptation on GPT-2 for PubMed-Based Tuberculosis Clinical Q&A Generation
-
-## Penulis dan Afiliasi
-
-M. Arie Prasetyo1*
+M. Arie Prasetyo¹*
 
 1. PT Galenic Systems Indonesia, Bandung, Indonesia
 
-*Korespondensi: arie@galenic.systems
+*Correspondence: arie@galenic.systems
 
-## Abstrak (Bahasa Indonesia)
+## Abstract
 
-Penelitian ini mengevaluasi apakah metode Low-Rank Adaptation (LoRA) yang diimplementasikan secara manual dapat mengadaptasi GPT-2 secara efisien untuk tugas generatif tanya-jawab klinis tuberkulosis (TB). Dataset disusun dari `bigbio/pubmed_qa` dengan penyaringan kata kunci TB, kemudian diformat sebagai pasangan teks kausal "Question: ... Answer: ...". Model dasar GPT-2 dibekukan seluruh parameternya, dan hanya parameter LoRA yang dilatih pada lapisan perhatian `c_attn`. Evaluasi dilakukan menggunakan tiga komponen: perplexity in-domain (validasi TB), perplexity out-of-domain (wikitext-2) untuk memantau catastrophic forgetting, dan analisis kualitatif melalui prompt battery. Ablasi rank dilakukan pada $r \in \{1,4,8,16,32\}$. [DRAFT — diperbarui setelah eksperimen selesai] Secara metodologis, penelitian ini mengharapkan bahwa LoRA dapat meningkatkan kesesuaian domain TB dengan tetap menjaga performa umum bahasa ketika pemilihan rank mempertimbangkan metrik in-domain dan out-of-domain secara bersamaan.
+This study evaluates the effectiveness of a manually implemented Low-Rank Adaptation (LoRA) method for adapting GPT-2 to a generative tuberculosis (TB) clinical question-answering task. The dataset was built from the PubMedQA collection (`bigbio/pubmed_qa`) by filtering TB-related articles and formatting them as causal language modeling pairs in the "Question: ... Answer: ..." structure, yielding approximately 707 TB-related QA pairs. All base GPT-2 parameters were frozen, while LoRA parameters were injected into the `c_attn` attention projections and trained using a parameter-efficient fine-tuning approach. Experiments varied the LoRA rank (r = 4, 8, and 16) together with the number of training epochs (3, 5, and 10, respectively) to evaluate the effect of adapter capacity on domain adaptation. Quantitative evaluation used in-domain perplexity on the TB validation set and out-of-domain perplexity on WikiText-2 as an indicator of general-language retention. The results show that increasing the LoRA rank consistently reduces in-domain perplexity, from 30.85 at rank 4 to 24.38 at rank 8 and 21.08 at rank 16. In contrast, out-of-domain perplexity remained relatively stable in the 55–57 range, indicating that increased domain specialization was not accompanied by a significant change in the model's general-language capability. These findings show that a manual LoRA implementation can improve domain adaptation on GPT-2 with a relatively small number of trainable parameters, supporting the use of parameter-efficient fine-tuning as a foundation for developing larger biomedical language models for knowledge retrieval and health question-answering systems.
 
-Kata kunci: LoRA, GPT-2, Tuberkulosis, PubMed QA, Perplexity, Parameter-Efficient Fine-Tuning
+Keywords: LoRA, GPT-2, Tuberculosis, PubMedQA, Domain Adaptation, Parameter-Efficient Fine-Tuning
 
-## Abstract (English)
+## 1. Introduction
 
-This study evaluates whether a manually implemented Low-Rank Adaptation (LoRA) method can efficiently adapt GPT-2 to a generative tuberculosis (TB) clinical question-answering task. The dataset is built from `bigbio/pubmed_qa` using TB keyword filtering and formatted as causal language modeling pairs in the "Question: ... Answer: ..." structure. All base GPT-2 parameters are frozen, and only LoRA parameters are trained on `c_attn` attention projections. Evaluation uses three components: in-domain perplexity (TB validation), out-of-domain perplexity (wikitext-2) to monitor catastrophic forgetting, and qualitative prompt-battery analysis. Rank ablation is performed for $r \in \{1,4,8,16,32\}$. [DRAFT — update after experiments complete] Methodologically, the study expects that LoRA can improve TB-domain fit while preserving general-language capability when rank selection jointly considers in-domain and out-of-domain metrics.
+Adapting language models to the medical domain requires parameter efficiency due to limited computational resources and the need for repeated experimentation. The LoRA approach enables fine-tuning by adding low-rank matrices without updating all of the base model's weights. In this study, a manual LoRA implementation previously used on a classification task is re-evaluated on a more challenging generative task: PubMed-literature-based TB clinical question answering.
 
-Keywords: LoRA, GPT-2, Tuberculosis, PubMed QA, Perplexity, Parameter-Efficient Fine-Tuning
+Main contributions of this study:
+1. Demonstrating an end-to-end manual LoRA pipeline for a clinical generative task on GPT-2.
+2. Evaluating the impact of adaptation using both in-domain and out-of-domain metrics to monitor forgetting.
+3. Analyzing the effect of LoRA rank on the trade-off between domain specificity and the stability of general-language capability.
 
-## 1. Pendahuluan
+## 2. Related Work
 
-Adaptasi model bahasa untuk domain medis membutuhkan efisiensi parameter karena keterbatasan komputasi dan kebutuhan eksperimen berulang. Pendekatan LoRA memungkinkan fine-tuning dengan menambahkan matriks ber-rank rendah tanpa memperbarui seluruh bobot model dasar. Pada penelitian ini, implementasi LoRA manual yang sebelumnya digunakan pada tugas klasifikasi dievaluasi kembali pada tugas generatif yang lebih menantang, yaitu tanya-jawab klinis TB berbasis literatur PubMed.
+Briefly review:
+1. Parameter-Efficient Fine-Tuning and LoRA.
+2. Domain adaptation in medical NLP.
+3. Evaluation of generative models based on perplexity and qualitative analysis.
 
-Kontribusi utama penelitian:
-1. Menunjukkan pipeline end-to-end LoRA manual untuk tugas generatif klinis pada GPT-2.
-2. Mengevaluasi dampak adaptasi menggunakan metrik in-domain dan out-of-domain untuk memantau forgetting.
-3. Menganalisis pengaruh rank LoRA terhadap trade-off spesifisitas domain dan stabilitas kemampuan umum.
+Add citations according to the target journal's style.
 
-## 2. Tinjauan Pustaka
+## 3. Methods
 
-Uraikan ringkas:
-1. Parameter-Efficient Fine-Tuning dan LoRA.
-2. Domain adaptation pada NLP medis.
-3. Evaluasi model generatif berbasis perplexity dan analisis kualitatif.
+### 3.1 Experimental Design
 
-Tambahkan sitasi sesuai gaya jurnal target.
+The study compares two conditions:
+1. Base GPT-2 (without LoRA fine-tuning).
+2. GPT-2 + trained LoRA adapter.
 
-## 3. Metode Penelitian
-
-### 3.1 Desain Eksperimen
-
-Penelitian membandingkan dua kondisi:
-1. GPT-2 dasar (tanpa fine-tuning LoRA).
-2. GPT-2 + adapter LoRA terlatih.
-
-Eksperimen tambahan dilakukan melalui ablation rank: $r = 1,4,8,16,32$.
+A rank ablation is conducted across the focused configurations r = 4, 8, and 16. In this ablation, the number of training epochs was scaled with rank (r4 = 3 epochs, r8 = 5 epochs, r16 = 10 epochs); the implications of this coupled design are discussed in the Limitations section.
 
 ### 3.2 Dataset
 
-Sumber utama: `bigbio/pubmed_qa`.
+Primary source: `bigbio/pubmed_qa`.
 
-Langkah data:
-1. Filter rekaman berbasis kata kunci TB.
-2. Format data menjadi "Question: ...\nAnswer: ...".
-3. Simpan cache lokal di `data/tb_qa.json`.
-4. Bagi data menjadi train/validation/test sesuai pipeline proyek.
+Data steps:
+1. Filter records using TB keywords, yielding approximately 707 TB-related QA pairs.
+2. Format the data as "Question: ...\nAnswer: ...".
+3. Store a local cache at `data/tb_qa.json`.
+4. Split the data into train/validation/test according to the project pipeline.
 
-### 3.3 Model dan Konfigurasi Pelatihan
+### 3.3 Model and Training Configuration
 
-1. Model dasar: GPT-2 (`GPT2LMHeadModel`, 124 juta parameter).
-2. Seluruh parameter model dasar dibekukan sebelum injeksi LoRA.
-3. Injeksi LoRA pada proyeksi perhatian gabungan QKV (`c_attn`) di setiap blok transformer GPT-2.
+1. Base model: GPT-2 (`GPT2LMHeadModel`, 124 million parameters).
+2. All base model parameters are frozen before LoRA injection.
+3. LoRA is injected into the fused QKV attention projection (`c_attn`) in each GPT-2 transformer block.
 
-Mekanisme LoRA medekomposisi pembaruan bobot $W_0 \in \mathbb{R}^{d \times k}$ menjadi:
+The LoRA mechanism decomposes the weight update $W_0 \in \mathbb{R}^{d \times k}$ as:
 
 $$\Delta W = BA, \quad B \in \mathbb{R}^{d \times r},\quad A \in \mathbb{R}^{r \times k}, \quad r \ll \min(d,k)$$
 
-Sehingga forward pass menjadi:
+so that the forward pass becomes:
 
 $$h = W_0 x + \frac{\alpha}{r} \, BAx$$
 
-Matriks $A$ diinisialisasi dengan Kaiming uniform; matriks $B$ diinisialisasi dengan nol sehingga $\Delta W = 0$ pada awal pelatihan dan perilaku model awal tetap terjaga. Dalam penelitian ini, $\alpha = r$ (dikopel dengan rank) sehingga skala efektif $\alpha/r = 1$ konsisten di seluruh nilai rank pada ablasi.
+Matrix $A$ is initialized with Kaiming uniform; matrix $B$ is initialized with zeros so that $\Delta W = 0$ at the start of training and the initial model behavior is preserved. In this study, $\alpha = r$ (coupled with the rank) so that the effective scale $\alpha/r = 1$ is consistent across all rank values in the ablation.
 
-4. Hiperparameter inti:
+4. Core hyperparameters:
    - Optimizer: AdamW
    - Learning rate: $2 \times 10^{-4}$
-   - Epoch: 3
    - Batch size: 4
-   - Max sequence length: 512 token
-   - Warmup: 10% dari total langkah pelatihan
-   - Rank ablation: $r \in \{1, 4, 8, 16, 32\}$, $\alpha = r$
+   - Max sequence length: 512 tokens
+   - Warmup: 10% of total training steps
+   - Rank ablation (focused): $r \in \{4, 8, 16\}$ with epochs $\{3, 5, 10\}$ respectively, $\alpha = r$
 
-### 3.4 Protokol Evaluasi
+### 3.4 Evaluation Protocol
 
-Evaluasi kuantitatif:
-1. Perplexity in-domain pada validasi TB.
-2. Perplexity out-of-domain pada wikitext-2 sebagai kontrol catastrophic forgetting.
+Quantitative evaluation:
+1. In-domain perplexity on the TB validation set.
+2. Out-of-domain perplexity on WikiText-2 as a control for catastrophic forgetting.
 
-Evaluasi kualitatif:
-1. Prompt battery TB (greedy dan sampled decoding).
-2. Perbandingan side-by-side sebelum dan sesudah fine-tuning.
+Qualitative evaluation:
+1. TB prompt battery (greedy and sampled decoding).
+2. Side-by-side comparison before and after fine-tuning.
 
-## 4. Hasil dan Pembahasan
+## 4. Results and Discussion
 
-### 4.1 Hasil Kuantitatif
+### 4.1 Quantitative Results
 
-Isi tabel berikut menggunakan hasil eksperimen:
+Table 1 presents the evaluation of the LoRA adapter across the focused rank configurations. As the rank increases, the number of trainable parameters grows linearly, from 147,456 parameters at rank 4 to 589,824 parameters at rank 16.
 
-| Model | Rank | In-domain PPL | OOD PPL | Delta In-domain (%) | Delta OOD (%) |
-|---|---:|---:|---:|---:|---:|
-| GPT-2 dasar | - | TODO | TODO | - | - |
-| GPT-2 + LoRA | 1 | TODO | TODO | TODO | TODO |
-| GPT-2 + LoRA | 4 | TODO | TODO | TODO | TODO |
-| GPT-2 + LoRA | 8 | TODO | TODO | TODO | TODO |
-| GPT-2 + LoRA | 16 | TODO | TODO | TODO | TODO |
-| GPT-2 + LoRA | 32 | TODO | TODO | TODO | TODO |
+**Table 1.** In-domain and out-of-domain perplexity across LoRA rank configurations.
 
-Interpretasi minimum yang harus dibahas:
-1. Besaran penurunan in-domain PPL.
-2. Stabilitas OOD PPL sebagai indikator forgetting.
-3. Rank terbaik berdasarkan gabungan kedua metrik.
+| Rank | Epochs | Trainable Parameters | Validation PPL | OOD PPL |
+| ---- | ------ | -------------------: | -------------: | ------: |
+| 4    | 3      |              147,456 |          30.85 |   55.81 |
+| 8    | 5      |              294,912 |          24.38 |   56.78 |
+| 16   | 10     |              589,824 |          21.08 |   56.71 |
 
-### 4.2 Hasil Kualitatif
+The results show a consistent downward trend in in-domain perplexity as the LoRA rank increases. Compared to the rank-4 configuration, rank 16 yields a perplexity reduction of approximately 31.7%, indicating an improved ability of the model to model the distribution of the TB text used during training.
 
-Sajikan 5-10 contoh prompt TB berikut:
-1. Output model dasar (greedy + sampled).
-2. Output model LoRA terbaik (greedy + sampled).
-3. Catatan analisis: spesifisitas istilah klinis, kelengkapan regimen, potensi halusinasi.
+On the other hand, the out-of-domain perplexity values do not change significantly and stay within a narrow range (55–57). The stability of this metric indicates that the domain adaptation obtained through LoRA does not cause large degradation in GPT-2's general-language capability. This finding is consistent with the main goal of parameter-efficient fine-tuning, namely improving performance on the target domain without making large modifications to the base model parameters.
 
-### 4.3 Pembahasan
+Furthermore, the validation loss curves (Figure 1) show a stable, monotonic decrease across all three configurations, with no indication of a rebound (overfitting). For the rank-16 configuration, validation loss dropped from approximately 0.607 at the start of training to 0.517 at the final epoch (step 9). The rank-8 and rank-4 configurations plateaued at higher values (≈0.540 and ≈0.586, respectively), consistent with their lower capacity and shorter training schedules. This suggests that the adapter capacity can still be exploited effectively at the dataset size used in this study.
 
-Bahas:
-1. Apakah LoRA manual cukup untuk meningkatkan kompetensi domain TB.
-2. Dampak pemilihan rank terhadap kualitas domain vs retensi kemampuan umum.
-3. Implikasi metodologis untuk eksperimen fase berikutnya.
+![Validation loss per epoch for the focused LoRA configurations (r4/e3, r8/e5, r16/e10).](../../outputs/wandb_charts/val_loss_by_epoch.png)
 
-Topik penting untuk diskusi lanjutan adalah penyiapan inference server terstandar untuk evaluasi manusia. Dalam konteks penelitian ini, server inferensi memungkinkan perbandingan A/B yang konsisten antara model dasar GPT-2 dan model GPT-2 + adapter LoRA terbaik menggunakan endpoint, parameter decoding, dan logging yang sama. Dengan pendekatan ini, evaluasi tidak hanya bertumpu pada perplexity, tetapi juga dapat memasukkan penilaian kualitas jawaban oleh penilai manusia (misalnya klinisi atau peneliti biomedis) secara lebih terstruktur.
+**Figure 1.** Validation loss per epoch for the focused ablation runs `ablation_r4_e3`, `ablation_r8_e5`, and `ablation_r16_e10`. Final-epoch values are annotated (0.586, 0.541, 0.517). Source: Weights & Biases project `lora-phase-1b` (`val/loss`); underlying data in `outputs/wandb_charts/wandb_export_2026-06-09T23_09_42.866+07_00.csv`. Plot regenerated via `outputs/wandb_charts/make_figures.py`.
 
-Selain memperkuat validitas eksternal, desain server inferensi membuka peluang kolaborasi lintas institusi. Mitra kolaborasi dapat mengakses antarmuka evaluasi yang seragam untuk melakukan anotasi berbasis rubric (akurasi terminologi, kelengkapan regimen, potensi halusinasi, dan kegunaan klinis), sehingga hasil antar-tim lebih mudah dibandingkan dan direplikasi.
+![Final validation perplexity by LoRA rank configuration, with value labels.](../../outputs/wandb_charts/val_perplexity_bars.png)
 
-## 5. Keterbatasan Penelitian
+**Figure 2.** Final validation perplexity for each focused configuration (r16/e10 = 21.08, r8/e5 = 24.38, r4/e3 = 30.85; lower is better). Source: Weights & Biases project `lora-phase-1b` (`val/perplexity`); underlying data in `outputs/wandb_charts/wandb_export_2026-06-09T23_10_06.974+07_00.csv`. Plot regenerated via `outputs/wandb_charts/make_figures.py`.
 
-Penelitian ini memiliki beberapa keterbatasan:
-1. Evaluasi utama masih didominasi metrik otomatis (in-domain dan out-of-domain perplexity), sehingga belum sepenuhnya menangkap kualitas faktual klinis.
-2. Belum tersedia inference server khusus untuk menyelenggarakan evaluasi manusia terblind secara terkontrol antara model dasar dan model LoRA.
-3. Belum dilakukan pengukuran reliabilitas antar-penilai (inter-rater reliability) karena protokol evaluasi manusia belum dijalankan. Bila lebih dari dua penilai digunakan, metrik yang sesuai adalah Fleiss' kappa atau Krippendorff's alpha, bukan Cohen's kappa.
-4. Studi masih berskala kecil dengan satu arsitektur dasar (GPT-2, 124M parameter) dan ruang eksplorasi hiperparameter terbatas.
-5. Pelatihan menggunakan seluruh token sequence sebagai target loss tanpa masking token pertanyaan (question-token masking); teknik ini direncanakan pada fase berikutnya dan dapat meningkatkan kualitas generasi jawaban.
+### 4.2 Qualitative Results
 
-## 6. Kesimpulan
+Present 5–10 of the following TB prompts:
+1. Base model output (greedy + sampled).
+2. Best LoRA model output (greedy + sampled).
+3. Analysis notes: clinical-term specificity, regimen completeness, hallucination potential.
 
-[DRAFT — diperbarui setelah eksperimen selesai] LoRA manual pada GPT-2 diharapkan dapat meningkatkan performa generatif in-domain TB pada skala eksperimen kecil, dengan syarat evaluasi model mempertimbangkan metrik out-of-domain agar risiko catastrophic forgetting tetap terpantau. Penelitian lanjutan perlu melibatkan evaluasi ahli klinis, metrik evaluasi tambahan, pembandingan dengan implementasi PEFT standar (mis. HuggingFace PEFT), dan ekperimen pada model yang lebih besar.
+### 4.3 Discussion
 
-## 7. Arah Pengembangan Lanjutan (Future Work)
+The results show that manual LoRA can adapt GPT-2 to the tuberculosis domain even though it uses only a small number of additional parameters. The consistent decrease in in-domain perplexity at higher ranks shows that the adapter successfully captured the linguistic patterns and terminology present in the TB corpus derived from PubMedQA.
 
-Rencana pengembangan berikutnya berfokus pada pembangunan inference server penelitian untuk mendukung evaluasi manusia yang lebih kuat secara metodologis:
-1. Menyediakan dua mode inferensi terstandar: GPT-2 dasar dan GPT-2 + adapter LoRA terbaik.
-2. Menjalankan studi A/B terblind dengan prompt TB yang sama, parameter decoding tetap, dan seed terkontrol.
-3. Menyusun rubric penilaian bersama mitra klinis/akademik (akurasi medis, spesifisitas, keterbacaan, dan risiko halusinasi).
-4. Menghitung metrik reliabilitas antar-penilai (misalnya Cohen's kappa) untuk meningkatkan kredibilitas hasil.
-5. Menjadikan server inferensi sebagai platform kolaborasi multi-institusi untuk memperluas cakupan anotasi dan validasi eksternal.
+Interestingly, the improvement in in-domain performance was not accompanied by a meaningful change in out-of-domain perplexity. This finding indicates that the base model's general knowledge is largely preserved, so that the risk of catastrophic forgetting in the tested configurations is relatively low. LoRA therefore provides an efficient adaptation mechanism for the medical domain without requiring a full update of all model parameters.
 
-Pendekatan ini diharapkan memperkuat kontribusi ilmiah proyek dari sisi evaluasi, sekaligus membuka peluang kolaborasi formal dengan rumah sakit pendidikan, fakultas kedokteran, atau laboratorium NLP kesehatan.
+From a methodological standpoint, this study also shows that a manual LoRA implementation can produce behavior consistent with reports in the parameter-efficient fine-tuning literature. Despite using a relatively small GPT-2 (124 million parameters) and a dataset of approximately 707 question-answer pairs, the adapter was still able to produce measurable improvements on the domain validation metric.
 
-## Ucapan Terima Kasih
+The strongest scientific claim supported by these results is that manual LoRA adaptation improves in-domain modeling performance on TB-related QA data while maintaining relatively stable out-of-domain perplexity.
 
-Contoh:
-Penulis mengucapkan terima kasih kepada [institusi/lab/pendana] atas dukungan komputasi dan diskusi penelitian.
+An important topic for further discussion is the preparation of a standardized inference server for human evaluation. In the context of this study, an inference server enables consistent A/B comparison between the base GPT-2 model and the best GPT-2 + LoRA adapter model using the same endpoint, decoding parameters, and logging. With this approach, evaluation does not rely solely on perplexity but can also incorporate answer-quality assessment by human raters (e.g., clinicians or biomedical researchers) in a more structured manner.
 
-## Kontribusi Penulis
+Beyond strengthening external validity, an inference-server design opens opportunities for cross-institutional collaboration. Collaborating partners can access a uniform evaluation interface for rubric-based annotation (terminology accuracy, regimen completeness, hallucination potential, and clinical usefulness), making cross-team results easier to compare and replicate.
 
-Gunakan format CRediT (contoh):
-1. Konseptualisasi: A.M.P.
-2. Metodologi: A.M.P.
-3. Implementasi perangkat lunak: A.M.P.
-4. Analisis formal: A.M.P.
-5. Penulisan draf awal: A.M.P.
-6. Review dan editing: A.M.P.
+## 5. Limitations
 
-> Tambahkan penulis lain beserta kontribusinya jika ada kolaborator di kemudian hari.
+This study has several limitations:
+1. The main evaluation is still dominated by automatic metrics (in-domain and out-of-domain perplexity), so it does not yet fully capture clinical factual quality.
+2. In the reported ablation, **rank and the number of epochs were varied simultaneously** (r4 = 3 epochs, r8 = 5 epochs, r16 = 10 epochs). Consequently, the observed in-domain improvement cannot be attributed to rank alone, as it may partly stem from longer training. A controlled experiment that fixes the number of epochs across ranks is needed to disentangle these two factors.
+3. No dedicated inference server is yet available to conduct controlled, blinded human evaluation between the base and LoRA models.
+4. Inter-rater reliability has not been measured because the human evaluation protocol has not been run. If more than two raters are used, the appropriate metrics are Fleiss' kappa or Krippendorff's alpha, not Cohen's kappa.
+5. The study is still small in scale with a single base architecture (GPT-2, 124M parameters), a modest dataset (~707 QA pairs), and a limited hyperparameter search space.
+6. Training uses the entire token sequence as the loss target without question-token masking; this technique is planned for the next phase and may improve answer generation quality.
 
-## Pernyataan Etik
+## 6. Conclusion
 
-Penelitian ini menggunakan dataset publik sekunder dan tidak melibatkan intervensi pada subjek manusia. Luaran model tidak ditujukan untuk penggunaan klinis.
+Manual LoRA proved viable as a domain-adaptation approach for a generative language model on the tuberculosis question-answering task. The rank-16 configuration provided the best performance in this experiment, with a validation perplexity of 21.08 and a validation loss of approximately 0.517. These results support the hypothesis that increasing adapter capacity can improve the model's domain capability without significantly sacrificing general-language ability, provided that model evaluation also considers out-of-domain metrics so that the risk of catastrophic forgetting remains monitored. Follow-up research should involve clinical-expert evaluation, additional evaluation metrics, comparison with standard PEFT implementations (e.g., HuggingFace PEFT), a controlled rank-vs-epoch ablation, and experiments on larger models.
 
-## Pendanaan
+## 7. Future Work
 
-Isi salah satu:
-1. Penelitian ini tidak menerima pendanaan khusus.
-2. Penelitian ini didanai oleh [nama skema], nomor kontrak [xxx].
+The next development plan focuses on building a research inference server to support methodologically stronger human evaluation:
+1. Provide two standardized inference modes: base GPT-2 and GPT-2 + best LoRA adapter.
+2. Run blinded A/B studies with the same TB prompts, fixed decoding parameters, and controlled seeds.
+3. Develop an evaluation rubric together with clinical/academic partners (medical accuracy, specificity, readability, and hallucination risk).
+4. Compute inter-rater reliability metrics (e.g., Fleiss' kappa or Krippendorff's alpha) to increase the credibility of results.
+5. Build a human evaluation benchmark of 50–100 unseen TB questions comparing base GPT-2 against GPT-2 + LoRA r16, since in biomedical NLP reviewers generally find actual answer quality more compelling than perplexity alone.
+6. Conduct a controlled ablation that fixes epochs across ranks to isolate the effect of rank.
+7. Use the inference server as a multi-institution collaboration platform to broaden annotation coverage and external validation.
 
-## Konflik Kepentingan
+This approach is expected to strengthen the project's scientific contribution on the evaluation side while opening opportunities for formal collaboration with teaching hospitals, medical faculties, or health NLP laboratories.
 
-Penulis menyatakan tidak ada konflik kepentingan.
+## Acknowledgments
 
-## Ketersediaan Data dan Kode
+Example:
+The author thanks [institution/lab/funder] for computational support and research discussion.
 
-1. Kode eksperimen: repository proyek ini.
-2. Dataset olahan: `data/tb_qa.json` (sesuai kebijakan distribusi data).
-3. Artefak hasil: `outputs/results.csv`, `outputs/checkpoints/`.
+## Author Contributions
 
-## Daftar Pustaka
+Use the CRediT format (example):
+1. Conceptualization: A.M.P.
+2. Methodology: A.M.P.
+3. Software implementation: A.M.P.
+4. Formal analysis: A.M.P.
+5. Writing — original draft: A.M.P.
+6. Review and editing: A.M.P.
 
-Gunakan gaya sitasi sesuai jurnal target (umum di SINTA: APA 7, IEEE, atau Vancouver).
+> Add other authors and their contributions if collaborators join later.
 
-Referensi wajib (sudah terverifikasi):
+## Ethics Statement
+
+This study uses a public secondary dataset and does not involve intervention on human subjects. The model outputs are not intended for clinical use.
+
+## Funding
+
+Fill in one of the following:
+1. This research received no specific funding.
+2. This research was funded by [scheme name], contract number [xxx].
+
+## Conflict of Interest
+
+The author declares no conflict of interest.
+
+## Data and Code Availability
+
+1. Experiment code: this project's repository.
+2. Processed dataset: `data/tb_qa.json` (subject to data distribution policy).
+3. Result artifacts: `outputs/20260609-second-ablation-run_focused-ranks/results.csv`, `outputs/20260609-second-ablation-run_focused-ranks/checkpoints/`.
+
+## References
+
+Use the citation style required by the target journal (common in SINTA: APA 7, IEEE, or Vancouver).
+
+Required references (verified):
 1. Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang, S., Wang, L., & Chen, W. (2022). LoRA: Low-rank adaptation of large language models. In *International Conference on Learning Representations (ICLR)*.
-2. Radford, A., Wu, J., Child, R., Luan, D., Amodei, D., & Sutskever, I. (2019). Language models are unsupervised multitask learners. *OpenAI Blog*, 1(8). [Referensi utama GPT-2]
-3. Jin, Q., Dhingra, B., Liu, Z., Cohen, W. W., & Lu, X. (2019). PubMedQA: A dataset for biomedical research question answering. In *Proceedings of EMNLP-IJCNLP*. [Referensi dataset PubMed QA]
-4. Fries, J. A., et al. (2022). BigBio: A framework for data-centric biomedical natural language processing. In *Advances in Neural Information Processing Systems (NeurIPS)*. [Referensi HuggingFace bigbio/pubmed_qa]
-5. Loshchilov, I., & Hutter, F. (2019). Decoupled weight decay regularization. In *ICLR*. [Referensi AdamW]
-6. Merity, S., Xiong, C., Bradbury, J., & Socher, R. (2017). Pointer sentinel mixture models. In *ICLR*. [Referensi wikitext-2]
+2. Radford, A., Wu, J., Child, R., Luan, D., Amodei, D., & Sutskever, I. (2019). Language models are unsupervised multitask learners. *OpenAI Blog*, 1(8). [Primary GPT-2 reference]
+3. Jin, Q., Dhingra, B., Liu, Z., Cohen, W. W., & Lu, X. (2019). PubMedQA: A dataset for biomedical research question answering. In *Proceedings of EMNLP-IJCNLP*. [PubMed QA dataset reference]
+4. Fries, J. A., et al. (2022). BigBio: A framework for data-centric biomedical natural language processing. In *Advances in Neural Information Processing Systems (NeurIPS)*. [Reference for HuggingFace bigbio/pubmed_qa]
+5. Loshchilov, I., & Hutter, F. (2019). Decoupled weight decay regularization. In *ICLR*. [AdamW reference]
+6. Merity, S., Xiong, C., Bradbury, J., & Socher, R. (2017). Pointer sentinel mixture models. In *ICLR*. [WikiText-2 reference]
 
-Referensi perlu ditambahkan:
-- [Tambahkan referensi domain adaptation pada NLP medis]
-- [Tambahkan referensi catastrophic forgetting pada LM]
-- [Tambahkan referensi PEFT pembanding, mis. Lester et al. 2021 (prompt tuning), Houlsby et al. 2019 (adapter)]
-- [Tambahkan referensi evaluasi inter-rater (Fleiss 1971, Krippendorff 2004) jika studi human eval dilanjutkan]
+References to be added:
+- [Add a reference on domain adaptation in medical NLP]
+- [Add a reference on catastrophic forgetting in LMs]
+- [Add a comparative PEFT reference, e.g., Lester et al. 2021 (prompt tuning), Houlsby et al. 2019 (adapter)]
+- [Add inter-rater evaluation references (Fleiss 1971, Krippendorff 2004) if the human eval study proceeds]
 
-## Lampiran (Opsional)
+## Appendix (Optional)
 
-1. Prompt battery lengkap.
-2. Tabel hasil per-seed.
-3. Detail environment (GPU, versi library, commit hash).
+1. Full prompt battery.
+2. Per-seed results table.
+3. Environment details (GPU, library versions, commit hash).
