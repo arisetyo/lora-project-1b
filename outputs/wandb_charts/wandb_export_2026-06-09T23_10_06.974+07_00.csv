@@ -1,4 +1,0 @@
-"Step","ablation_r16_e10_20260609_0743 - val/perplexity","ablation_r16_e10_20260609_0743 - val/perplexity__MIN","ablation_r16_e10_20260609_0743 - val/perplexity__MAX","ablation_r8_e5_20260609_0743 - val/perplexity","ablation_r8_e5_20260609_0743 - val/perplexity__MIN","ablation_r8_e5_20260609_0743 - val/perplexity__MAX","ablation_r4_e3_20260609_0743 - val/perplexity","ablation_r4_e3_20260609_0743 - val/perplexity__MIN","ablation_r4_e3_20260609_0743 - val/perplexity__MAX"
-"3","","","","","","","30.850872255862832","30.850872255862832","30.850872255862832"
-"5","","","","24.38134941348736","24.38134941348736","24.38134941348736","","",""
-"10","21.07668495273764","21.07668495273764","21.07668495273764","","","","","",""

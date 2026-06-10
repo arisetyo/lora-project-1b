@@ -78,3 +78,6 @@ wandb/
 Thumbs.db
 
 TMP
+
+docs/
+specs/

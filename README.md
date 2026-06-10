@@ -7,7 +7,7 @@ Manual LoRA fine-tune of GPT-2 on tuberculosis clinical Q&A pairs from PubMed. R
 - Apply LoRA to GPT-2 (`c_attn` layers) used as a **causal LM** (not classifier)
 - Train on TB-filtered records from `bigbio/pubmed_qa`
 - Evaluate via in-domain perplexity, out-of-domain perplexity, and a TB prompt battery
-- Rank ablation: `r = 1, 4, 8, 16, 32`
+- Rank ablation (initial run): `r = 1, 4, 8, 16, 32`
 
 ## Setup
 ```bash
@@ -17,17 +17,7 @@ uv pip install -r requirements.txt
 ```
 
 ## Outputs
-- Checkpoints: `outputs/checkpoints/` (not tracked in git)
-- Ablation CSV: `outputs/results.csv`
+- Checkpoints: `outputs/<run name>/checkpoints/` (not tracked in git)
+- Ablation CSV: `outputs/<run name>/results.csv`
 - Base vs fine-tuned comparison: `docs/base-vs-finetuned.md`
 - W&B project: `lora-phase-1b`
-
-## Documentation
-- [SOP: step-by-step runbook](docs/runbook.md)
-- [Dataset gathering walkthrough](docs/reference/dataset_gathering.md)
-- [Archived PRD](docs/archive/PRD.md)
-- [Reference materials](docs/reference/)
-
-## Reference
-- Phase 1A code: `../lora-project-1a/`
-- Phase 1B learning narrative: `../../RnD/LoRA/lora-phase-1b.md` (in the main repo)
