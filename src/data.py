@@ -39,10 +39,10 @@ def get_dataloaders(
     dataset_name: str = DATASET_NAME,
     dataset_config: str = DATASET_CONFIG,
     fallback_dataset_config: str = FALLBACK_DATASET_CONFIG,
-    batch_size: int = 4,
-    max_length: int = 512,
-    val_split: float = 0.2,
-    test_n: int = 100,
+    batch_size: int = 4, # batch size for DataLoader
+    max_length: int = 512, # maximum token length for truncation / padding
+    val_split: float = 0.2, # fraction of remaining data to hold out for validation, eg. 20% of remaining after test split
+    test_n: int = 100, # number of test samples to hold out, eg. 100 samples for testing
     seed: int = 42,
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     """
@@ -82,7 +82,7 @@ def get_dataloaders(
     shuffled_texts = texts[:]
     rng.shuffle(shuffled_texts)
 
-    test_n = min(test_n, max(1, len(shuffled_texts) // 5))
+    test_n = min(test_n, max(1, len(shuffled_texts) // 5)) # divide by 5 to ensure at least 20% of data is left for train/val
     test_texts = shuffled_texts[:test_n]
     remaining = shuffled_texts[test_n:]
     split_idx = int(len(remaining) * (1 - val_split))
